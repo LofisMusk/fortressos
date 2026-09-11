@@ -1,196 +1,661 @@
-name: Test Android Build
+# ============================================================
+# FORTRESS OS
+# Per-VM security policy
+# ============================================================
 
-on:
-  workflow_dispatch:
+version: "1.0"
 
-env:
-  ROM_MANIFEST: https://github.com/LineageOS/android.git
-  ROM_BRANCH: lineage-23.2
+system:
+  name: "Fortress OS"
+  architecture: "LineageOS + AVF/pKVM + Microdroid/Fortress Guest"
+  security_model: "fail-closed"
+  trust_model: "zero-trust-between-vms"
 
-  # Nie pozwalamy ccache zająć całego dysku
-  CCACHE_SIZE: 20G
+  defaults:
+    failure_mode: "deny"
+    vm_to_vm: false
+    vm_to_host: false
+    host_to_vm: "capability_only"
+    real_hardware_access: false
+    real_identity_access: false
+    real_location_access: false
+    real_network_access: false
 
-jobs:
-  build:
-    # Jeżeli masz większego GitHub-hosted runnera, podmień na jego label.
-    # Na początek możesz zostawić ubuntu-24.04.
-    runs-on: ubuntu-24.04
 
-    timeout-minutes: 360
+# ============================================================
+# TRUSTED COMPUTING BASE
+# ============================================================
 
-    steps:
-      # ------------------------------------------------------------
-      # 1. Podstawowe narzędzia
-      # ------------------------------------------------------------
-      - name: Install dependencies
-        run: |
-          sudo apt-get update
+tcb:
 
-          sudo apt-get install -y \
-            git \
-            git-lfs \
-            curl \
-            python3 \
-            python3-pip \
-            unzip \
-            zip \
-            rsync \
-            bc \
-            bison \
-            flex \
-            build-essential \
-            ccache \
-            clang \
-            lld \
-            libssl-dev \
-            libxml2-utils \
-            xsltproc \
-            libncurses-dev \
-            zlib1g-dev \
-            liblz4-tool \
-            libxml2 \
-            openjdk-17-jdk
+  boot:
+    verified_boot: true
+    avb: true
+    rollback_protection: true
 
-          git lfs install
+  hypervisor:
+    type: "pKVM"
+    provider: "AVF"
+    protected_vms: true
+    vm_isolation: "mandatory"
 
-      # ------------------------------------------------------------
-      # 2. Repo tool
-      # ------------------------------------------------------------
-      - name: Install repo
-        run: |
-          mkdir -p "$HOME/bin"
+  host:
+    selinux: "enforcing"
+    adb_root: false
+    debug_build: false
 
-          curl -L \
-            https://storage.googleapis.com/git-repo-downloads/repo \
-            -o "$HOME/bin/repo"
+  guard:
+    enabled: true
+    trusted: true
+    fail_closed: true
 
-          chmod +x "$HOME/bin/repo"
+    heartbeat:
+      enabled: true
+      interval_ms: 1000
+      timeout_ms: 3000
+      action_on_timeout: "revoke_all_capabilities"
 
-          echo "$HOME/bin" >> "$GITHUB_PATH"
+    rule:
+      if_provider_untrusted: "deny"
+      if_provider_dead: "deny"
+      if_policy_missing: "deny"
+      if_identity_invalid: "deny"
+      if_network_untrusted: "deny"
 
-          repo --version
 
-      # ------------------------------------------------------------
-      # 3. Przygotowanie ccache
-      # ------------------------------------------------------------
-      - name: Configure ccache
-        run: |
-          mkdir -p "$HOME/.ccache"
+# ============================================================
+# VM DEFAULTS
+# ============================================================
 
-          ccache --set-config=cache_dir="$HOME/.ccache"
-          ccache --set-config=max_size="${CCACHE_SIZE}"
-          ccache --set-config=compression=true
+vm_defaults:
 
-          ccache --zero-stats
-          ccache --show-config
+  isolation:
+    vm_to_vm: false
+    vm_to_host: false
+    host_filesystem: false
+    shared_memory: false
+    shared_clipboard: false
+    shared_notifications: false
 
-      # ------------------------------------------------------------
-      # 4. Restore cache kompilacji
-      # ------------------------------------------------------------
-      - name: Restore ccache
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.ccache
-          key: |
-            ccache-lineage-23.2-${{ runner.arch }}-${{ github.ref_name }}-${{ github.sha }}
-          restore-keys: |
-            ccache-lineage-23.2-${{ runner.arch }}-${{ github.ref_name }}-
-            ccache-lineage-23.2-${{ runner.arch }}-
+  storage:
+    type: "encrypted_image"
+    encrypted: true
+    host_mount: false
+    cross_vm_access: false
 
-      # ------------------------------------------------------------
-      # 5. Przygotowanie source
-      # ------------------------------------------------------------
-      - name: Initialize LineageOS
-        run: |
-          mkdir -p "$GITHUB_WORKSPACE/android"
-          cd "$GITHUB_WORKSPACE/android"
+  hardware:
+    real_hardware: false
 
-          repo init \
-            -u "$ROM_MANIFEST" \
-            -b "$ROM_BRANCH" \
-            --git-lfs \
-            --no-clone-bundle
+    identity:
+      physical_imei: false
+      physical_serial: false
+      physical_mac: false
+      physical_bluetooth_id: false
+      physical_wifi_id: false
 
-      # ------------------------------------------------------------
-      # 6. Synchronizacja source
-      # ------------------------------------------------------------
-      - name: Sync LineageOS
-        run: |
-          cd "$GITHUB_WORKSPACE/android"
+    sensors:
+      physical: false
+      virtual: true
 
-          repo sync \
-            -c \
-            --no-tags \
-            --optimized-fetch \
-            --prune \
-            --force-sync \
-            -j"$(nproc)"
+    location:
+      physical_gps: false
+      virtual_provider: true
 
-      # ------------------------------------------------------------
-      # 7. Pokaż ile faktycznie pobraliśmy
-      # ------------------------------------------------------------
-      - name: Source statistics
-        run: |
-          cd "$GITHUB_WORKSPACE/android"
+    camera:
+      physical_camera: false
+      broker: true
 
-          echo "===== DISK ====="
-          df -h
+    microphone:
+      physical_microphone: false
+      broker: true
 
-          echo "===== SOURCE SIZE ====="
-          du -sh .
+    audio:
+      physical_audio: false
+      virtual: true
 
-          echo "===== .repo SIZE ====="
-          du -sh .repo
 
-          echo "===== PROJECT COUNT ====="
-          repo list | wc -l
+# ============================================================
+# IDENTITY
+# ============================================================
 
-      # ------------------------------------------------------------
-      # 8. Przygotowanie build environment
-      # ------------------------------------------------------------
-      - name: Setup Android environment
-        run: |
-          cd "$GITHUB_WORKSPACE/android"
+identity:
 
-          source build/envsetup.sh
+  provider: "Fortress Identity Manager"
 
-          echo "Android environment initialized"
+  policy:
+    physical_identity_exposure: "deny"
+    stable_pseudonym: true
+    randomize_on_boot: false
+    randomize_on_reinstall: true
 
-      # ------------------------------------------------------------
-      # 9. Build
-      # ------------------------------------------------------------
-      - name: Build
-        run: |
-          cd "$GITHUB_WORKSPACE/android"
+  fields:
 
-          source build/envsetup.sh
+    android_id:
+      source: "virtual"
+      per_vm: true
+      stable: true
 
-          # Na tym etapie NIE budujemy jeszcze A52sxq.
-          # Sprawdzamy tylko czy czysty source potrafi się zainicjalizować.
+    serial:
+      source: "virtual"
+      per_vm: true
 
-          echo "Environment OK"
+    model:
+      source: "virtual"
+      per_vm: true
 
-      # ------------------------------------------------------------
-      # 10. Statystyki ccache
-      # ------------------------------------------------------------
-      - name: Ccache statistics
-        if: always()
-        run: |
-          ccache --show-stats || true
-          ccache --show-config || true
+    manufacturer:
+      source: "virtual"
+      per_vm: true
 
-      # ------------------------------------------------------------
-      # 11. Informacje diagnostyczne
-      # ------------------------------------------------------------
-      - name: System information
-        if: always()
-        run: |
-          echo "===== CPU ====="
-          nproc
+    build_fingerprint:
+      source: "virtual"
+      per_vm: true
 
-          echo "===== MEMORY ====="
-          free -h
+    mac_address:
+      source: "virtual"
+      per_vm: true
 
-          echo "===== DISK ====="
-          df -h
+    bluetooth_identity:
+      source: "virtual"
+      per_vm: true
+
+    wifi_identity:
+      source: "virtual"
+      per_vm: true
+
+    imei:
+      source: "virtual"
+      physical_value_exposure: "deny"
+
+    subscriber_identity:
+      source: "virtual"
+      physical_value_exposure: "deny"
+
+
+# ============================================================
+# LOCATION
+# ============================================================
+
+location:
+
+  provider: "Fortress Location Provider"
+
+  default:
+    mode: "virtual"
+    physical_gps: false
+
+  anti_leak:
+    allow_real_gps: false
+    allow_gnss_raw_data: false
+    allow_cell_location: false
+    allow_wifi_location: false
+    allow_sensor_fusion_from_real_sensors: false
+
+  failure:
+    provider_dead: "deny"
+    provider_timeout: "deny"
+    invalid_coordinates: "deny"
+    guard_unavailable: "deny"
+
+  fallback:
+    real_location: false
+    last_known_real_location: false
+
+
+# ============================================================
+# NETWORK
+# ============================================================
+
+network:
+
+  provider: "Fortress Network Guard"
+
+  architecture:
+
+    vm:
+      interface: "virtual_nic"
+
+    path:
+      - "virtual_nic"
+      - "network_guard"
+      - "per_vm_firewall"
+      - "vpn_gateway"
+      - "internet"
+
+  defaults:
+    internet: false
+    vpn_required: true
+    dns_leak_protection: true
+    ipv6_leak_protection: true
+
+  isolation:
+    vm_to_vm: false
+    vm_to_host: false
+    host_real_interface: false
+
+  killswitch:
+
+    enabled: true
+
+    conditions:
+
+      vpn_down:
+        action: "disable_vm_network"
+
+      vpn_untrusted:
+        action: "disable_vm_network"
+
+      network_guard_dead:
+        action: "disable_vm_network"
+
+      dns_protection_dead:
+        action: "disable_vm_network"
+
+      policy_invalid:
+        action: "disable_vm_network"
+
+      guard_timeout:
+        action: "disable_vm_network"
+
+    fallback:
+      direct_internet: false
+      host_network: false
+      physical_interface: false
+
+
+# ============================================================
+# CAMERA
+# ============================================================
+
+camera:
+
+  provider: "Fortress Camera Broker"
+
+  physical_camera:
+    exposed: false
+
+  default:
+    mode: "broker"
+
+  broker:
+
+    enabled: true
+
+    policy:
+      app_request: "host_user_consent_required"
+      raw_camera_device: false
+      continuous_access: false
+
+    failure:
+      broker_dead: "deny"
+      guard_dead: "deny"
+
+  data_flow:
+
+    allowed:
+      - "physical_camera"
+      - "camera_broker"
+      - "virtual_camera"
+      - "vm"
+
+    forbidden:
+      - "physical_camera_to_vm"
+      - "physical_camera_device_node_to_vm"
+
+
+# ============================================================
+# MICROPHONE
+# ============================================================
+
+microphone:
+
+  provider: "Fortress Audio Broker"
+
+  physical_microphone:
+    exposed: false
+
+  default:
+    mode: "deny"
+
+  broker:
+    enabled: true
+    user_consent_required: true
+
+  failure:
+    broker_dead: "deny"
+    guard_dead: "deny"
+
+
+# ============================================================
+# SENSORS
+# ============================================================
+
+sensors:
+
+  provider: "Fortress Sensor Virtualization Layer"
+
+  physical:
+    accelerometer: false
+    gyroscope: false
+    magnetometer: false
+    barometer: false
+    proximity: false
+    ambient_light: false
+
+  virtual:
+    accelerometer: true
+    gyroscope: true
+    magnetometer: true
+    barometer: true
+    proximity: true
+    ambient_light: true
+
+  failure:
+    provider_dead: "deny"
+    guard_dead: "deny"
+
+  anti_fingerprint:
+    expose_real_sampling_rate: false
+    expose_real_noise_profile: false
+    expose_real_calibration: false
+    expose_real_sensor_ids: false
+
+
+# ============================================================
+# FILE / DATA BROKER
+# ============================================================
+
+data_broker:
+
+  provider: "Fortress Data Broker"
+
+  default:
+    host_filesystem: "deny"
+    shared_storage: "deny"
+    sdcard: "deny"
+
+  transfer:
+
+    direction:
+      host_to_vm: true
+      vm_to_host: false
+      vm_to_vm: false
+
+    method: "capability"
+
+  capability:
+
+    default_expiration: "one_use"
+
+    permissions:
+
+      read: true
+      write: false
+      execute: false
+      persistent: false
+      share: false
+
+  example:
+
+    host:
+      action: "share_file"
+
+    result:
+      vm_access: true
+      host_filesystem_access: false
+      other_vm_access: false
+
+  failure:
+    broker_dead: "deny"
+    guard_dead: "deny"
+
+
+# ============================================================
+# CLIPBOARD
+# ============================================================
+
+clipboard:
+
+  default: "deny"
+
+  host_to_vm:
+    enabled: false
+
+  vm_to_host:
+    enabled: false
+
+  vm_to_vm:
+    enabled: false
+
+  optional_capability:
+    enabled: true
+    lifetime: "one_use"
+
+
+# ============================================================
+# NOTIFICATIONS
+# ============================================================
+
+notifications:
+
+  vm_to_host:
+    enabled: false
+
+  broker:
+    enabled: true
+
+  policy:
+    vm_identity_hidden: true
+    raw_vm_metadata: false
+
+
+# ============================================================
+# APPLICATION POLICY
+# ============================================================
+
+apps:
+
+  default:
+
+    execution: "dedicated_vm"
+
+    network:
+      internet: false
+      vpn_required: true
+
+    location:
+      mode: "virtual"
+
+    identity:
+      mode: "virtual"
+
+    camera:
+      mode: "broker"
+
+    microphone:
+      mode: "deny"
+
+    sensors:
+      mode: "virtual"
+
+    files:
+      mode: "capability_only"
+
+    host_access: false
+    vm_to_vm: false
+
+    failure_mode: "deny"
+
+
+# ============================================================
+# EXAMPLE VM
+# ============================================================
+
+vms:
+
+  chrome:
+
+    enabled: true
+
+    guest:
+      os: "microdroid"
+      runtime: "fortress_guest"
+
+    resources:
+      ram_mb: 768
+      vcpu: 2
+      storage_mb: 4096
+
+    identity:
+      profile: "chrome-001"
+      stable: true
+
+    network:
+      enabled: true
+      vpn_required: true
+      dns_protection: true
+      killswitch: true
+
+    location:
+      mode: "virtual"
+
+    camera:
+      mode: "broker"
+
+    microphone:
+      mode: "broker"
+
+    sensors:
+      mode: "virtual"
+
+    storage:
+      encrypted: true
+
+    permissions:
+      host_filesystem: false
+      vm_to_vm: false
+      real_hardware: false
+
+
+# ============================================================
+# RESOURCE MANAGEMENT
+# ============================================================
+
+resources:
+
+  memory:
+
+    dynamic_allocation: true
+
+    reclaim:
+      enabled: true
+      suspend_inactive_vms: true
+
+    limits:
+
+      host_reserved_mb: 3072
+
+      vm_default_max_mb: 768
+
+      max_active_vms: 2
+
+  cpu:
+
+    dynamic: true
+
+    background_vms:
+      cpu_limit_percent: 10
+
+
+# ============================================================
+# VM LIFECYCLE
+# ============================================================
+
+lifecycle:
+
+  boot:
+
+    order:
+
+      - "verify_host"
+      - "start_guard"
+      - "verify_identity_provider"
+      - "verify_network_guard"
+      - "verify_location_provider"
+      - "start_vm"
+
+    failure:
+      action: "do_not_start_vm"
+
+  runtime:
+
+    guard_required: true
+
+    guard_loss:
+      action: "freeze_vm"
+      network: "disable"
+      capabilities: "revoke"
+
+  shutdown:
+
+    wipe_runtime_secrets: true
+    revoke_capabilities: true
+
+  suspend:
+
+    enabled: true
+    preserve_encrypted_storage: true
+    revoke_temporary_capabilities: true
+
+
+# ============================================================
+# SECURITY EVENTS
+# ============================================================
+
+security_events:
+
+  log:
+
+    guard_failure: true
+    provider_failure: true
+    network_killswitch: true
+    capability_revocation: true
+    vm_start: true
+    vm_stop: true
+    vm_crash: true
+    unauthorized_access: true
+
+  sensitive_data:
+
+    real_imei: "never_log"
+    real_location: "never_log"
+    real_ip: "never_log"
+    camera_frames: "never_log"
+    microphone_data: "never_log"
+
+
+# ============================================================
+# ABSOLUTE SECURITY RULES
+# ============================================================
+
+security_invariants:
+
+  - "VM cannot access physical hardware directly"
+  - "VM cannot access host filesystem"
+  - "VM cannot access another VM"
+  - "VM cannot access physical identity"
+  - "VM cannot access physical location"
+  - "VM cannot bypass Network Guard"
+  - "VPN failure must never fall back to direct internet"
+  - "Spoofing failure must never fall back to real hardware"
+  - "Provider failure must result in denial"
+  - "Guard failure must result in denial"
+  - "Unknown capability must result in denial"
+  - "Unknown policy must result in denial"
+  - "Missing security component must result in denial"
+  - "Host-to-VM data transfer must use explicit capabilities"
+  - "Temporary capabilities must expire"
+  - "VM-to-VM communication is forbidden by default"
+  - "All VM storage must be isolated"
+  - "All VM identities must be pseudonymous"
+  - "Physical identity must remain inside the trusted host"
