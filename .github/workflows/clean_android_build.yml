@@ -1,0 +1,197 @@
+name: Test Android Build
+
+on:
+  workflow_dispatch:
+
+env:
+  ROM_MANIFEST: https://github.com/LineageOS/android.git
+  ROM_BRANCH: lineage-23.2
+
+  # Nie pozwalamy ccache zająć całego dysku
+  CCACHE_SIZE: 20G
+
+jobs:
+  build:
+    # Jeżeli masz większego GitHub-hosted runnera, podmień na jego label.
+    # Na początek możesz zostawić ubuntu-24.04.
+    runs-on: ubuntu-24.04
+
+    timeout-minutes: 360
+
+    steps:
+      # ------------------------------------------------------------
+      # 1. Podstawowe narzędzia
+      # ------------------------------------------------------------
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+
+          sudo apt-get install -y \
+            git \
+            git-lfs \
+            curl \
+            python3 \
+            python3-pip \
+            unzip \
+            zip \
+            rsync \
+            bc \
+            bison \
+            flex \
+            build-essential \
+            ccache \
+            clang \
+            lld \
+            libssl-dev \
+            libxml2-utils \
+            xsltproc \
+            libncurses5 \
+            libncurses5-dev \
+            zlib1g-dev \
+            liblz4-tool \
+            libxml2 \
+            openjdk-17-jdk
+
+          git lfs install
+
+      # ------------------------------------------------------------
+      # 2. Repo tool
+      # ------------------------------------------------------------
+      - name: Install repo
+        run: |
+          mkdir -p "$HOME/bin"
+
+          curl -L \
+            https://storage.googleapis.com/git-repo-downloads/repo \
+            -o "$HOME/bin/repo"
+
+          chmod +x "$HOME/bin/repo"
+
+          echo "$HOME/bin" >> "$GITHUB_PATH"
+
+          repo --version
+
+      # ------------------------------------------------------------
+      # 3. Przygotowanie ccache
+      # ------------------------------------------------------------
+      - name: Configure ccache
+        run: |
+          mkdir -p "$HOME/.ccache"
+
+          ccache --set-config=cache_dir="$HOME/.ccache"
+          ccache --set-config=max_size="${CCACHE_SIZE}"
+          ccache --set-config=compression=true
+
+          ccache --zero-stats
+          ccache --show-config
+
+      # ------------------------------------------------------------
+      # 4. Restore cache kompilacji
+      # ------------------------------------------------------------
+      - name: Restore ccache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.ccache
+          key: |
+            ccache-lineage-23.2-${{ runner.arch }}-${{ github.ref_name }}-${{ github.sha }}
+          restore-keys: |
+            ccache-lineage-23.2-${{ runner.arch }}-${{ github.ref_name }}-
+            ccache-lineage-23.2-${{ runner.arch }}-
+
+      # ------------------------------------------------------------
+      # 5. Przygotowanie source
+      # ------------------------------------------------------------
+      - name: Initialize LineageOS
+        run: |
+          mkdir -p "$GITHUB_WORKSPACE/android"
+          cd "$GITHUB_WORKSPACE/android"
+
+          repo init \
+            -u "$ROM_MANIFEST" \
+            -b "$ROM_BRANCH" \
+            --git-lfs \
+            --no-clone-bundle
+
+      # ------------------------------------------------------------
+      # 6. Synchronizacja source
+      # ------------------------------------------------------------
+      - name: Sync LineageOS
+        run: |
+          cd "$GITHUB_WORKSPACE/android"
+
+          repo sync \
+            -c \
+            --no-tags \
+            --optimized-fetch \
+            --prune \
+            --force-sync \
+            -j"$(nproc)"
+
+      # ------------------------------------------------------------
+      # 7. Pokaż ile faktycznie pobraliśmy
+      # ------------------------------------------------------------
+      - name: Source statistics
+        run: |
+          cd "$GITHUB_WORKSPACE/android"
+
+          echo "===== DISK ====="
+          df -h
+
+          echo "===== SOURCE SIZE ====="
+          du -sh .
+
+          echo "===== .repo SIZE ====="
+          du -sh .repo
+
+          echo "===== PROJECT COUNT ====="
+          repo list | wc -l
+
+      # ------------------------------------------------------------
+      # 8. Przygotowanie build environment
+      # ------------------------------------------------------------
+      - name: Setup Android environment
+        run: |
+          cd "$GITHUB_WORKSPACE/android"
+
+          source build/envsetup.sh
+
+          echo "Android environment initialized"
+
+      # ------------------------------------------------------------
+      # 9. Build
+      # ------------------------------------------------------------
+      - name: Build
+        run: |
+          cd "$GITHUB_WORKSPACE/android"
+
+          source build/envsetup.sh
+
+          # Na tym etapie NIE budujemy jeszcze A52sxq.
+          # Sprawdzamy tylko czy czysty source potrafi się zainicjalizować.
+
+          echo "Environment OK"
+
+      # ------------------------------------------------------------
+      # 10. Statystyki ccache
+      # ------------------------------------------------------------
+      - name: Ccache statistics
+        if: always()
+        run: |
+          ccache --show-stats || true
+          ccache --show-config || true
+
+      # ------------------------------------------------------------
+      # 11. Informacje diagnostyczne
+      # ------------------------------------------------------------
+      - name: System information
+        if: always()
+        run: |
+          echo "===== CPU ====="
+          nproc
+
+          echo "===== MEMORY ====="
+          free -h
+
+          echo "===== DISK ====="
+          df -h
