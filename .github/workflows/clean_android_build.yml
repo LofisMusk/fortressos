@@ -45,8 +45,7 @@ jobs:
             libssl-dev \
             libxml2-utils \
             xsltproc \
-            libncurses5 \
-            libncurses5-dev \
+            libncurses-dev \
             zlib1g-dev \
             liblz4-tool \
             libxml2 \
