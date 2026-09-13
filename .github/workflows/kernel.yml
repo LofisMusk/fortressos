@@ -80,6 +80,7 @@ jobs:
         with:
           name: a52sxq-kernel-${{ matrix.variant }}
           if-no-files-found: ignore
+          include-hidden-files: true  # .config
           path: |
             out/device-kernel/out/arch/arm64/boot/Image
             out/device-kernel/out/.config

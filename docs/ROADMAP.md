@@ -4,7 +4,7 @@ Status legend: **done**, **in progress**, planned.
 
 | Phase | Scope | Kernel part | Framework part | Status |
 |---|---|---|---|---|
-| 0 | Repo, docs, CI, Fortress LSM core | policy/securityfs, launch gate, Network Guard, unix IPC isolation, QEMU tests | – | **in progress**: code written, host tests pass, first CI run pending |
+| 0 | Repo, docs, CI, Fortress LSM core | policy/securityfs, launch gate, Network Guard, unix IPC isolation, QEMU tests | – | **done**: CI green (QEMU 54/54, a52sxq kernel builds); not yet on device |
 | 1 | Clean LineageOS 23.2 build, device validation | develop-mode kernel on device | – | planned (needs crave.io access) |
 | 2 | Own keys, release pipeline | vbmeta `--flags 0` + own AVB key | `sign_release.sh`, OTA JSON on GitHub Releases | keys script **done** |
 | 3 | Identity Guard | `/proc` and `/sys` identity denials, `RTM_GETLINK` filter | FortressService policy loader, zygote `self/profile` + `Build.*` + property overlay, Android ID | planned |

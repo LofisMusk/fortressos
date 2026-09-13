@@ -15,11 +15,11 @@ aborts on error.
 
 ## Status
 
-Phase 0: the Fortress LSM core (launch gate, fail-closed egress / VPN kill
-switch, unix IPC isolation) is written. The policy parser passes host tests
-under ASan/UBSan. Kernel compilation and the QEMU runtime tests run in
-GitHub Actions and have not had their first run yet. The full ROM build
-(Phase 1) is next. See
+Phase 0 is done and verified in CI: the Fortress LSM core (launch gate,
+fail-closed egress / VPN kill switch, unix IPC isolation) passes 54 runtime
+checks on Linux 5.4.254 in QEMU, and it builds warning-free into the real
+a52sxq kernel (AOSP clang 21, ThinLTO, CFI). It has not run on the phone
+yet. The full ROM build (Phase 1) is next. See
 [docs/ROADMAP.md](docs/ROADMAP.md).
 
 ## Layout
