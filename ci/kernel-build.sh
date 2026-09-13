@@ -52,9 +52,13 @@ clang --version | head -1
 # 3. Fortress + config.
 "$root/kernel/integrate.sh" "$work/kernel"
 
+# Same invocation as vendor/lineage build/tasks/kernel.mk. Passing CC on the
+# command line also bypasses the vendor scripts/gcc-wrapper.py, as the real
+# LineageOS build does (its warning allowlist predates clang 21).
 kmake() {
 	make -C "$work/kernel" O="$work/out" ARCH=arm64 LLVM=1 LLVM_IAS=1 \
-		CROSS_COMPILE=aarch64-linux-gnu- -j"$jobs" "$@"
+		CROSS_COMPILE=aarch64-linux-gnu- CLANG_TRIPLE=aarch64-linux-gnu- \
+		CC=clang LD=ld.lld -j"$jobs" "$@"
 }
 
 rm -rf "$work/out"
