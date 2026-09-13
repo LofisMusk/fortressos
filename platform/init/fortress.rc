@@ -1,0 +1,10 @@
+# DRAFT - installed to /system/etc/init/ in Phase 3.
+#
+# Hands the policy file to system_server's uid. Until system_server loads
+# a policy, the kernel stays UNLOADED: no app can start and no packet can
+# leave through a non-loopback interface.
+
+on early-init
+    mount securityfs securityfs /sys/kernel/security nosuid nodev noexec
+    chown system system /sys/kernel/security/fortress/policy
+    chmod 0600 /sys/kernel/security/fortress/policy

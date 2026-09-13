@@ -1,0 +1,6 @@
+# DRAFT - wired into the build in Phase 3 (system_server policy loader).
+
+# /sys/kernel/security/fortress/{status,policy,enforce}
+type fortress_policy_file, fs_type;
+# /sys/kernel/security/fortress/self/profile
+type fortress_profile_file, fs_type;

@@ -1,0 +1,2 @@
+genfscon securityfs /fortress u:object_r:fortress_policy_file:s0
+genfscon securityfs /fortress/self u:object_r:fortress_profile_file:s0

@@ -1,0 +1,4 @@
+# Bring-up builds only: boot permissive (log-only) because stock LineageOS
+# userspace does not load a Fortress policy yet. Watch "fortress:" in dmesg.
+CONFIG_SECURITY_FORTRESS_DEVELOP=y
+CONFIG_SECURITY_FORTRESS_DEVELOP_PERMISSIVE=y

@@ -1,0 +1,17 @@
+# DRAFT - wired into the build in Phase 3.
+#
+# The kernel additionally requires euid 0 or AID_SYSTEM for policy writes;
+# SELinux narrows that to system_server (and init for the boot chown).
+
+allow system_server fortress_policy_file:dir search;
+allow system_server fortress_policy_file:file rw_file_perms;
+
+allow init fortress_policy_file:file { getattr setattr };
+
+# zygote children read their virtual identity right after setuid.
+allow { zygote appdomain } fortress_policy_file:dir search;
+allow { zygote appdomain } fortress_profile_file:dir search;
+allow { zygote appdomain } fortress_profile_file:file r_file_perms;
+
+neverallow { domain -system_server } fortress_policy_file:file { write append };
+neverallow { domain -init } fortress_policy_file:file setattr;

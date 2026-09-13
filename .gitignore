@@ -1,0 +1,21 @@
+# Build and test output
+out/
+*.o
+*.bin
+
+# Signing material must never be committed (see docs/SIGNING.md)
+*.pk8
+*.pem
+*.key
+*.keystore
+*.jks
+keys/
+.fortress-keys/
+CERT-FINGERPRINTS.txt
+
+# Python
+__pycache__/
+*.pyc
+
+# macOS
+.DS_Store

@@ -1,0 +1,6 @@
+# Fortress LSM on the a52sxq kernel (merged over vendor/lineage-a52sxq_defconfig).
+CONFIG_SECURITY_FORTRESS=y
+# Same order as the stock list, minus LSMs that are not built, plus fortress.
+CONFIG_LSM="lockdown,yama,loadpin,safesetid,integrity,selinux,fortress"
+# dmesg is readable only with CAP_SYSLOG (logd has it; apps never do).
+CONFIG_SECURITY_DMESG_RESTRICT=y

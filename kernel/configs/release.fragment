@@ -1,0 +1,3 @@
+# Release builds: no runtime switch can weaken either MAC layer.
+# CONFIG_SECURITY_FORTRESS_DEVELOP is not set
+# CONFIG_SECURITY_SELINUX_DEVELOP is not set

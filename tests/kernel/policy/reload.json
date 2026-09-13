@@ -1,0 +1,7 @@
+{
+  "serial": 2,
+  "tunnels": [{"ifname": "fwg0", "kind": "tun"}],
+  "apps": [
+    {"appid": 10051, "net": true}
+  ]
+}

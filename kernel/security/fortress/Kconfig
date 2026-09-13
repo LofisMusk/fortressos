@@ -1,0 +1,36 @@
+# SPDX-License-Identifier: GPL-2.0-only
+config SECURITY_FORTRESS
+	bool "Fortress fail-closed application guard"
+	depends on SECURITY && SECURITYFS && SECURITY_NETWORK
+	depends on NETFILTER && INET
+	default n
+	help
+	  Fortress OS guard: an in-kernel, fail-closed policy for Android
+	  application uids. It blocks app processes from launching without
+	  an active policy entry, confines all app egress traffic to policy
+	  tunnel interfaces (VPN kill switch without a userspace daemon),
+	  and isolates apps from each other over AF_UNIX sockets.
+
+	  "fortress" must also be listed in CONFIG_LSM. With this option
+	  enabled and the LSM missing from the list, the kernel panics.
+
+config SECURITY_FORTRESS_DEVELOP
+	bool "Fortress development mode (NOT for release builds)"
+	depends on SECURITY_FORTRESS
+	default n
+	help
+	  Allows enforcement to be switched off with the "fortress.enforce="
+	  boot parameter and /sys/kernel/security/fortress/enforce. In
+	  permissive mode every would-be denial is only logged.
+
+	  Release builds must say N: enforcement is then compiled in and
+	  cannot be disabled at all.
+
+config SECURITY_FORTRESS_DEVELOP_PERMISSIVE
+	bool "Fortress boots permissive by default"
+	depends on SECURITY_FORTRESS_DEVELOP
+	default n
+	help
+	  Boot in permissive (log-only) mode unless "fortress.enforce=1" is
+	  given. Intended for bring-up on a userspace that does not load a
+	  Fortress policy yet.

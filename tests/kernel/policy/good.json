@@ -1,0 +1,14 @@
+{
+  "serial": 1,
+  "tunnels": [{"ifname": "fwg0", "kind": "tun"}],
+  "exempt": [{"appid": 1073, "ifprefix": "phys"}],
+  "profiles": {
+    "pixel9": {"ro.product.model": "Pixel 9", "ro.product.brand": "google"}
+  },
+  "apps": [
+    {"appid": 10050, "net": true, "profile": "pixel9"},
+    {"appid": 10051, "net": true},
+    {"appid": 10052, "net": false},
+    {"appid": 10060, "net": true, "trusted": true}
+  ]
+}

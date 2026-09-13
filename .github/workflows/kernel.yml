@@ -1,0 +1,84 @@
+# Fortress kernel CI. Runs entirely on free GitHub-hosted runners.
+name: kernel
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: kernel-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  policy-tools:
+    name: policy compiler + parser (ASan/UBSan, fuzz)
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install clang
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends clang
+      - name: Unit tests and parser tests
+        run: make -C tools/fortress-policy test CC=clang
+      - name: Fuzz the kernel policy parser
+        run: make -C tools/fortress-policy fuzz FUZZ_SECONDS=120
+
+  qemu-test:
+    name: LSM runtime tests (Linux 5.4.254, QEMU arm64)
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install packages
+        run: |
+          sudo apt-get update
+          xargs -a ci/packages.txt sudo apt-get install -y --no-install-recommends
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: out/qemu/linux-5.4.254.tar.xz
+          key: linux-5.4.254
+      - name: Build kernel and run tests in QEMU
+        run: ci/qemu-test.sh
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: always()
+        with:
+          name: qemu-log
+          path: out/qemu/qemu.log
+          if-no-files-found: ignore
+
+  device-kernel:
+    name: a52sxq kernel (${{ matrix.variant }})
+    runs-on: ubuntu-22.04
+    timeout-minutes: 300
+    strategy:
+      fail-fast: false
+      matrix:
+        variant: [develop, release]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
+          df -h /
+      - name: Install packages
+        run: |
+          sudo apt-get update
+          xargs -a ci/packages.txt sudo apt-get install -y --no-install-recommends
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: out/device-kernel/clang
+          key: aosp-clang-r563880c-android-16.0.0_r4
+      - name: Build kernel with Fortress
+        run: VARIANT=${{ matrix.variant }} ci/kernel-build.sh
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: a52sxq-kernel-${{ matrix.variant }}
+          path: |
+            out/device-kernel/out/arch/arm64/boot/Image
+            out/device-kernel/out/.config
+            out/device-kernel/fortress-build.log

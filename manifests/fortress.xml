@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Fortress OS local manifest for LineageOS 23.2 (a52sxq).
+  Copy to .repo/local_manifests/ after `repo init -b lineage-23.2`.
+
+  Device, kernel and proprietary vendor trees are listed explicitly so the
+  build does not depend on roomservice. Pin <project revision="<sha>"> for
+  release builds (see docs/BUILD.md, "Reproducibility").
+-->
+<manifest>
+  <project path="device/samsung/a52sxq"
+           name="LineageOS/android_device_samsung_a52sxq"
+           remote="github" revision="lineage-23.2" />
+  <project path="device/samsung/sm7325-common"
+           name="LineageOS/android_device_samsung_sm7325-common"
+           remote="github" revision="lineage-23.2" />
+  <project path="kernel/samsung/sm7325"
+           name="LineageOS/android_kernel_samsung_sm7325"
+           remote="github" revision="lineage-23.2" />
+  <project path="hardware/samsung"
+           name="LineageOS/android_hardware_samsung"
+           remote="github" revision="lineage-23.2" />
+  <project path="hardware/samsung_slsi/nfc"
+           name="LineageOS/android_hardware_samsung_slsi_nfc"
+           remote="github" revision="lineage-23.2" />
+
+  <!-- Proprietary blobs (extracted from stock firmware by TheMuppets). -->
+  <project path="vendor/samsung/a52sxq"
+           name="TheMuppets/proprietary_vendor_samsung_a52sxq"
+           remote="github" revision="lineage-23.2" />
+  <project path="vendor/samsung/sm7325-common"
+           name="TheMuppets/proprietary_vendor_samsung_sm7325-common"
+           remote="github" revision="lineage-23.2" />
+</manifest>
