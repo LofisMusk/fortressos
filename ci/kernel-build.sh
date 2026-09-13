@@ -73,12 +73,13 @@ else
 	grep -qx 'CONFIG_SECURITY_FORTRESS_DEVELOP_PERMISSIVE=y' out/.config
 fi
 
-# 4. Build. Warnings in our own code are errors.
-kmake W=1 security/fortress/ 2>&1 | tee fortress-build.log
-if grep -E 'security/fortress/.*(warning|error):' fortress-build.log; then
+# 4. Build. Not W=1: it applies tree-wide and trips Samsung's
+# forbidden-warning check in vDSO code. security/fortress/Makefile adds
+# its own extra warnings, and any warning there fails the job.
+kmake Image 2>&1 | tee build.log
+if grep -E 'security/fortress/[^ ]*: (warning|error):' build.log; then
 	echo "kernel-build: warnings in security/fortress" >&2
 	exit 1
 fi
-kmake Image
 
 echo "kernel-build: $work/out/arch/arm64/boot/Image ($variant)"

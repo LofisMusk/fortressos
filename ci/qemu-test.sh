@@ -73,7 +73,7 @@ EOF
 
 # 4. Boot. The test powers the VM off; panic=-1 + -no-reboot covers crashes.
 timeout 600 qemu-system-aarch64 -M virt -cpu cortex-a57 -smp 2 -m 512 \
-	-nographic -no-reboot \
+	-nographic -no-reboot -nic none \
 	-kernel "$ksrc/arch/arm64/boot/Image" -initrd initramfs.cpio \
 	-append "console=ttyAMA0 panic=-1" | tee qemu.log
 

@@ -76,9 +76,11 @@ jobs:
       - name: Build kernel with Fortress
         run: VARIANT=${{ matrix.variant }} ci/kernel-build.sh
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: always()
         with:
           name: a52sxq-kernel-${{ matrix.variant }}
+          if-no-files-found: ignore
           path: |
             out/device-kernel/out/arch/arm64/boot/Image
             out/device-kernel/out/.config
-            out/device-kernel/fortress-build.log
+            out/device-kernel/build.log

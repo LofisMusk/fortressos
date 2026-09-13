@@ -23,7 +23,7 @@ libFuzzer; it needs LLVM clang, not Apple clang.
 |---|---|
 | `policy-tools` | as above, plus 2 minutes of fuzzing |
 | `qemu-test` | vanilla Linux 5.4.254 (sha256-pinned) + Fortress boots in QEMU arm64. `tests/kernel/fortress_test.c` checks the gate, egress, IPC, profile and reload behaviour through real syscalls as different uids |
-| `device-kernel` | the real a52sxq tree at a pinned commit compiles with Fortress under AOSP `clang-r563880c` (ThinLTO+CFI), `develop` and `release` variants; `W=1` must be clean for `security/fortress` |
+| `device-kernel` | the real a52sxq tree at a pinned commit compiles with Fortress under AOSP `clang-r563880c` (ThinLTO+CFI), `develop` and `release` variants; `security/fortress` must build warning-free with its extra `-Wmissing-prototypes`/`-Wmissing-declarations` |
 
 Local equivalent, on any Linux box or in Docker:
 
