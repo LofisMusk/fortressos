@@ -9,10 +9,12 @@ the third needs a big Linux machine.
 make -C tools/fortress-policy test
 ```
 
-Runs the policy compiler unit tests, plus the **kernel's own parser source**
-compiled for the host under ASan/UBSan. Checks include every truncation,
-every single-bit flip, and 25 targeted malformed blobs. `make ... fuzz` runs
-libFuzzer; it needs LLVM clang, not Apple clang.
+Runs the policy compiler unit tests, plus the **kernel's own parser and
+Identity Guard path rules** compiled for the host under ASan/UBSan. Checks
+include every truncation, every single-bit flip, 25 targeted malformed
+blobs, and the glob matcher plus every `/proc` and `/sys` rule it drives.
+`make ... fuzz` runs libFuzzer against the parser and the matcher; it needs
+LLVM clang, not Apple clang.
 
 ## 2. Kernel CI (free GitHub Actions)
 
@@ -21,8 +23,8 @@ libFuzzer; it needs LLVM clang, not Apple clang.
 
 | Job | What it proves |
 |---|---|
-| `policy-tools` | as above, plus 2 minutes of fuzzing |
-| `qemu-test` | vanilla Linux 5.4.254 (sha256-pinned) + Fortress boots in QEMU arm64. `tests/kernel/fortress_test.c` checks the gate, egress, IPC, profile and reload behaviour through real syscalls as different uids |
+| `policy-tools` | as above, plus 2 minutes of fuzzing per target |
+| `qemu-test` | vanilla Linux 5.4.254 (sha256-pinned) + Fortress boots in QEMU arm64. `tests/kernel/fortress_test.c` checks the gate, egress, IPC, profile, identity denials and reload behaviour through real syscalls as different uids |
 | `device-kernel` | the real a52sxq tree at a pinned commit compiles with Fortress under AOSP `clang-r563880c` (ThinLTO+CFI), `develop` and `release` variants; `security/fortress` must build warning-free with its extra `-Wmissing-prototypes`/`-Wmissing-declarations` |
 
 Local equivalent, on any Linux box or in Docker:
