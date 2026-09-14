@@ -40,13 +40,30 @@ normally aren't, which is why these steps run in Linux.
 ## 3. Full ROM (Phase 1)
 
 `ci/rom/build.sh` has **not been run yet**. It needs Linux x86_64 with about
-300 GB of disk and 32–64 GB of RAM. AOSP does not build on macOS, and a free
+300 GB of disk and 32-64 GB of RAM. AOSP does not build on macOS, and a free
 runner has about 14 GB of disk and a 6-hour limit, so the options are:
 
 - **crave.io**: free build servers for FOSS ROM projects. Self-signup is
   closed; ask for access through the crave community. The workflow gets
   added once there is access.
 - Any rented or owned Linux machine.
+
+The disk figure is measured, not guessed. A `repo init -b lineage-23.2`
+followed by `repo sync -c --depth=1 --no-tags` (the cheapest sync that can
+still build) was run on a 4-core, 15 GB-RAM box with 29 GB free and stopped
+by a watchdog at 5 GB remaining:
+
+| After | Projects | Git objects | Working tree | Total |
+|---|---|---|---|---|
+| ~4 min | 504 of 1171 | 5.1 GB | 22 GB | 27 GB |
+
+That is 43 % of the manifest for 27 GB, so the source alone extrapolates to
+**at least ~60 GB**, and the projects not yet reached include the heaviest
+ones (`prebuilts/clang`, `prebuilts/rust`, the prebuilt WebView). The `out/`
+tree for `target-files-package` comes on top of that. The device and
+`sm7325-common` projects from `manifests/fortress.xml` did resolve and sync
+against `lineage-23.2` before the abort, so the local manifest itself is
+good; only the machine is too small.
 
 The output is **unsigned** `target-files` + `otatools`. Signing happens
 offline, see [SIGNING.md](SIGNING.md).
