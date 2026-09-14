@@ -13,6 +13,8 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <linux/if_tun.h>
+#include <linux/netlink.h>
+#include <linux/rtnetlink.h>
 #include <net/if.h>
 #include <netinet/in.h>
 #include <signal.h>
@@ -252,6 +254,24 @@ static int status_has(const char *line)
 	return strstr(buf, line) != NULL;
 }
 
+/* Value of the "<key>: <number>" line in status, or -1. */
+static long status_val(const char *key)
+{
+	char buf[1024], *p = buf;
+	size_t n = strlen(key);
+
+	if (read_file(FORTRESS "/status", buf, sizeof(buf)) < 0)
+		return -1;
+	for (;;) {
+		p = strstr(p, key);
+		if (!p)
+			return -1;
+		if ((p == buf || p[-1] == '\n') && p[n] == ':')
+			return strtol(p + n + 1, NULL, 10);
+		p += n;
+	}
+}
+
 struct udp_arg {
 	int family;
 	const char *dst;
@@ -404,6 +424,47 @@ static int fn_dgram(void *p)
 	return 0;
 }
 
+/* ---- identity guard --------------------------------------------------- */
+
+static int fn_open_ro(void *p)
+{
+	int fd = open((const char *)p, O_RDONLY);
+
+	if (fd < 0)
+		return errno;
+	close(fd);
+	return 0;
+}
+
+static int fn_netlink_socket(void *p)
+{
+	int fd = socket(AF_NETLINK, SOCK_RAW, *(const int *)p);
+
+	if (fd < 0)
+		return errno;
+	close(fd);
+	return 0;
+}
+
+/* Sends a link dump on an already open socket, e.g. an inherited one. */
+static int fn_netlink_send(void *p)
+{
+	struct {
+		struct nlmsghdr nlh;
+		struct ifinfomsg ifi;
+	} req;
+
+	memset(&req, 0, sizeof(req));
+	req.nlh.nlmsg_len = sizeof(req);
+	req.nlh.nlmsg_type = RTM_GETLINK;
+	req.nlh.nlmsg_flags = NLM_F_REQUEST | NLM_F_DUMP;
+	req.nlh.nlmsg_seq = 1;
+	req.ifi.ifi_family = AF_UNSPEC;
+	if (send(*(const int *)p, &req, sizeof(req), 0) < 0)
+		return errno;
+	return 0;
+}
+
 /* ---- test phases ------------------------------------------------------ */
 
 static void test_unloaded(void)
@@ -526,6 +587,66 @@ static void test_profile_and_access(void)
 	       "app still cannot open policy");
 }
 
+static void test_identity(void)
+{
+	int route = NETLINK_ROUTE, diag = NETLINK_SOCK_DIAG, fd;
+	long ident0 = status_val("deny_ident");
+	long netlink0 = status_val("deny_netlink");
+
+	printf("== identity guard\n");
+	expect(run_as(10050, fn_open_ro, "/proc/net/arp") == EACCES,
+	       "app cannot read the ARP table");
+	expect(run_as(10050, fn_open_ro, "/proc/net/tcp") == EACCES,
+	       "app cannot enumerate sockets");
+	expect(run_as(10050, fn_open_ro, "/proc/net/unix") == EACCES,
+	       "app cannot enumerate unix sockets");
+	expect(run_as(10050, fn_open_ro, "/proc/cpuinfo") == EACCES,
+	       "app cannot read /proc/cpuinfo (SoC serial)");
+	expect(run_as(10050, fn_open_ro, "/proc/sys/kernel/random/boot_id") ==
+	       EACCES, "app cannot read boot_id");
+	expect(run_as(10050, fn_open_ro, "/sys/class/net/fwg0/address") == EACCES,
+	       "app cannot read an interface MAC");
+	expect(run_as(10050, fn_open_ro, "/sys/class/net") == EACCES,
+	       "app cannot list interfaces via sysfs");
+	expect(run_as(90001, fn_open_ro, "/proc/cpuinfo") == EACCES,
+	       "isolated uid is restricted the same way");
+
+	expect(run_as(10050, fn_open_ro, "/proc/self/status") == 0,
+	       "app still reads its own /proc entries");
+	expect(run_as(10050, fn_open_ro, "/sys/devices/system/cpu/online") == 0,
+	       "app still reads unrelated sysfs");
+	expect(run_as(1000, fn_open_ro, "/proc/net/arp") == 0,
+	       "system uid reads the ARP table");
+	expect(run_as(1000, fn_open_ro, "/sys/class/net/fwg0/address") == 0,
+	       "system uid reads an interface MAC");
+
+	expect(run_as(10050, fn_netlink_socket, &route) == EACCES,
+	       "app cannot open a NETLINK_ROUTE socket");
+	expect(run_as(10050, fn_netlink_socket, &diag) == EACCES,
+	       "app cannot open a NETLINK_SOCK_DIAG socket");
+	expect(run_as(90001, fn_netlink_socket, &route) == EACCES,
+	       "isolated uid cannot open a NETLINK_ROUTE socket");
+	expect(run_as(1000, fn_netlink_socket, &route) == 0,
+	       "system uid opens a NETLINK_ROUTE socket");
+
+	fd = socket(AF_NETLINK, SOCK_RAW, NETLINK_ROUTE);
+	expect(fd >= 0, "root opens a NETLINK_ROUTE socket to hand down");
+	expect(run_as(10050, fn_netlink_send, &fd) == EACCES,
+	       "app cannot RTM_GETLINK on an inherited socket");
+	expect(run_as(1000, fn_netlink_send, &fd) == 0,
+	       "system uid may RTM_GETLINK on it");
+	close(fd);
+
+	/*
+	 * Exact deltas, so an unexpected extra denial (over-blocking in a
+	 * case expected to succeed) fails the test just as a missing one does.
+	 */
+	expect(status_val("deny_ident") - ident0 == 8,
+	       "8 file denials counted");
+	expect(status_val("deny_netlink") - netlink0 == 4,
+	       "4 netlink denials counted");
+}
+
 static void test_reload(void)
 {
 	static char blob[1 << 16];
@@ -554,6 +675,7 @@ int main(void)
 	test_net();
 	test_ipc();
 	test_profile_and_access();
+	test_identity();
 	test_reload();
 
 	if (failures)

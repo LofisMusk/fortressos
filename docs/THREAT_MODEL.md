@@ -45,6 +45,7 @@ vendor HALs.
 | No or invalid policy | apps cannot launch, no egress | `UNLOADED` state, atomic rejection |
 | App missing from policy | app killed at launch | launch gate + `SIGKILL` |
 | Identity profile unreadable | app does not start | zygote aborts on `self/profile` error (Phase 3) |
+| Identity source reachable under `/proc`, `/sys` or netlink | access denied, with or without a policy | Identity Guard rules are compiled in, not policy |
 | Tunnel down | no network | only tunnel interfaces are permitted; there is no fallback route |
 | Fortress not enabled in the kernel | no boot | panic from `fortress_late_init` |
 | Netfilter hook registration fails | no boot / no namespace | panic, or netns creation fails |

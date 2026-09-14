@@ -11,6 +11,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "idpath.h"
 #include "policy_parse.h"
 
 static int failures;
@@ -245,6 +246,85 @@ static void test_negative(const u8 *b, size_t l)
 	expect_err(b, l, m_prof_wrap, FPOL_E_BOUNDS, "profile offset wrap");
 }
 
+/* ---- Identity Guard path rules (idpath.c) ----------------------------- */
+
+static void test_path_match(void)
+{
+	/* Literal segments. */
+	CHECK(fid_path_match("/cpuinfo", "/cpuinfo"));
+	CHECK(!fid_path_match("/cpuinfo", "/cpuinfo2"));
+	CHECK(!fid_path_match("/cpuinfo", "/cpu"));
+	CHECK(!fid_path_match("/cpuinfo", "/cpuinfo/x"));
+	CHECK(!fid_path_match("/cpuinfo", "/x/cpuinfo"));
+	CHECK(!fid_path_match("/cpuinfo", "/"));
+
+	/* "*" is exactly one segment. */
+	CHECK(fid_path_match("/*/net/tcp", "/1/net/tcp"));
+	CHECK(fid_path_match("/*/net/tcp", "/thread-self/net/tcp"));
+	CHECK(!fid_path_match("/*/net/tcp", "/net/tcp"));
+	CHECK(!fid_path_match("/*/net/tcp", "/1/2/net/tcp"));
+
+	/* "**" is any number of segments, including none. */
+	CHECK(fid_path_match("/net/**", "/net"));
+	CHECK(fid_path_match("/net/**", "/net/arp"));
+	CHECK(fid_path_match("/net/**", "/net/a/b/c/d"));
+	CHECK(!fid_path_match("/net/**", "/netx"));
+	CHECK(!fid_path_match("/net/**", "/"));
+	CHECK(fid_path_match("/**/address", "/address"));
+	CHECK(fid_path_match("/**/address", "/devices/x/net/eth0/address"));
+	CHECK(!fid_path_match("/**/address", "/devices/x/addressx"));
+	CHECK(!fid_path_match("/**/address", "/devices/address/x"));
+	CHECK(fid_path_match("/devices/**/net/**", "/devices/a/b/net/eth0/x"));
+	CHECK(fid_path_match("/devices/**/net/**", "/devices/net"));
+	CHECK(!fid_path_match("/devices/**/net/**", "/class/net/eth0"));
+
+	/* Backtracking has to try every position of "**". */
+	CHECK(fid_path_match("/**/net/**", "/a/net/b/net/c"));
+	CHECK(fid_path_match("/**/a/a/b", "/a/a/a/b"));
+	CHECK(!fid_path_match("/**/a/a/b", "/a/a/a/c"));
+
+	/* Repeated and trailing slashes are not a way around a rule. */
+	CHECK(fid_path_match("/net/**", "//net//arp"));
+	CHECK(fid_path_match("/cpuinfo", "/cpuinfo/"));
+}
+
+static void test_path_denied(void)
+{
+	/* procfs: the whole network tree, by either spelling. */
+	CHECK(fid_path_denied(FID_FS_PROC, "/1234/net/arp"));
+	CHECK(fid_path_denied(FID_FS_PROC, "/1234/net/tcp6"));
+	CHECK(fid_path_denied(FID_FS_PROC, "/1234/net/unix"));
+	CHECK(fid_path_denied(FID_FS_PROC, "/1234/net"));
+	CHECK(fid_path_denied(FID_FS_PROC, "/net/arp"));
+	CHECK(fid_path_denied(FID_FS_PROC, "/cpuinfo"));
+	CHECK(fid_path_denied(FID_FS_PROC, "/sys/kernel/random/boot_id"));
+	/* ... but ordinary procfs stays readable. */
+	CHECK(!fid_path_denied(FID_FS_PROC, "/1234/status"));
+	CHECK(!fid_path_denied(FID_FS_PROC, "/1234/maps"));
+	CHECK(!fid_path_denied(FID_FS_PROC, "/self/cmdline"));
+	CHECK(!fid_path_denied(FID_FS_PROC, "/meminfo"));
+	CHECK(!fid_path_denied(FID_FS_PROC, "/sys/kernel/random/uuid"));
+
+	/* sysfs: MAC addresses through the class and the device path. */
+	CHECK(fid_path_denied(FID_FS_SYS, "/class/net"));
+	CHECK(fid_path_denied(FID_FS_SYS, "/class/net/wlan0/address"));
+	CHECK(fid_path_denied(FID_FS_SYS,
+			      "/devices/platform/soc/a000000.wifi/net/wlan0/address"));
+	CHECK(fid_path_denied(FID_FS_SYS, "/class/bluetooth/hci0/address"));
+	/* Serials: SoC, eMMC, USB, device tree. */
+	CHECK(fid_path_denied(FID_FS_SYS, "/devices/soc0/serial_number"));
+	CHECK(fid_path_denied(FID_FS_SYS,
+			      "/devices/platform/soc/8804000.sdhci/mmc_host/mmc0/mmc0:0001/cid"));
+	CHECK(fid_path_denied(FID_FS_SYS,
+			      "/devices/virtual/android_usb/android0/iSerial"));
+	CHECK(fid_path_denied(FID_FS_SYS, "/firmware/devicetree/base/serial-number"));
+	CHECK(fid_path_denied(FID_FS_SYS, "/bus/usb/devices/usb1/serial"));
+	/* ... but unrelated sysfs is untouched. */
+	CHECK(!fid_path_denied(FID_FS_SYS, "/devices/system/cpu/online"));
+	CHECK(!fid_path_denied(FID_FS_SYS, "/class/power_supply/battery/capacity"));
+	CHECK(!fid_path_denied(FID_FS_SYS, "/kernel/mm/transparent_hugepage/enabled"));
+}
+
 int main(int argc, char **argv)
 {
 	size_t len;
@@ -257,6 +337,8 @@ int main(int argc, char **argv)
 	blob = read_file(argv[1], &len);
 
 	test_classify();
+	test_path_match();
+	test_path_denied();
 	test_valid(blob, len);
 	test_truncation(blob, len);
 	test_bitflips(blob, len);

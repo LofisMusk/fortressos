@@ -84,6 +84,10 @@ static int status_show(struct seq_file *m, void *v)
 		   atomic64_read(&fortress_stats.deny_net));
 	seq_printf(m, "deny_ipc: %lld\n",
 		   atomic64_read(&fortress_stats.deny_ipc));
+	seq_printf(m, "deny_ident: %lld\n",
+		   atomic64_read(&fortress_stats.deny_ident));
+	seq_printf(m, "deny_netlink: %lld\n",
+		   atomic64_read(&fortress_stats.deny_netlink));
 	return 0;
 }
 

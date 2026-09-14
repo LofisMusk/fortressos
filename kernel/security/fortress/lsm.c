@@ -35,6 +35,9 @@ static struct security_hook_list fortress_hooks[] __lsm_ro_after_init = {
 	LSM_HOOK_INIT(task_fix_setuid, fortress_task_fix_setuid),
 	LSM_HOOK_INIT(unix_stream_connect, fortress_unix_stream_connect),
 	LSM_HOOK_INIT(unix_may_send, fortress_unix_may_send),
+	LSM_HOOK_INIT(file_open, fortress_file_open),
+	LSM_HOOK_INIT(socket_create, fortress_socket_create),
+	LSM_HOOK_INIT(netlink_send, fortress_netlink_send),
 };
 
 static int __init fortress_lsm_init(void)

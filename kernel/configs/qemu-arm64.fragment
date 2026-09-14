@@ -10,6 +10,9 @@ CONFIG_MULTIUSER=y
 CONFIG_FUTEX=y
 CONFIG_PROC_FS=y
 CONFIG_SYSFS=y
+# /proc/sys/kernel/random/boot_id, an Identity Guard test subject.
+CONFIG_SYSCTL=y
+CONFIG_PROC_SYSCTL=y
 CONFIG_DEVTMPFS=y
 CONFIG_NET=y
 CONFIG_INET=y
