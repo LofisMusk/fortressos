@@ -43,11 +43,27 @@ Fortress kernel in develop (permissive) mode:
 - [ ] OTA from recovery with our release key
 - [ ] Fortress "would deny" log lines reviewed (`dmesg | grep fortress`)
 
+## Flashing tools (macOS)
+
+Samsung devices have no fastboot, and on macOS the usual alternatives are
+dead ends: the Homebrew `heimdall-suite` cask was disabled on 2026-03-29,
+and Thor lists macOS as not implemented. The "Odin for Mac" projects on
+GitHub are unvetted binaries - not something to run against the device this
+project exists to harden.
+
+Use **samloader-rs**, which is what the LineageOS wiki prescribes for this
+device and ships a macOS universal build:
+<https://github.com/topjohnwu/samloader-rs/releases/latest>
+
+    samloader print-pit                                  # connection test
+    samloader flash --partition BOOT boot-fortress.img
+    samloader flash --partition RECOVERY recovery.img --no-reboot
+    samloader flash --partition VBMETA vbmeta.img
+
+Once LineageOS Recovery is installed, `adb` alone is enough for kernel
+iteration: push the image and `dd` it to `/dev/block/by-name/boot`.
+
 ## Recovery path
 
-Keep the matching stock firmware (`samloader`) and Odin (or Heimdall) ready.
-Flashing stock firmware restores the device, apart from the Knox fuse.
-Kernel-only iteration: repack `boot.img` with the new `Image` (header v3),
-then from Lineage Recovery's adb shell, write it with
-`dd of=/dev/block/by-name/boot`. The exact procedure gets validated in
-Phase 1.
+Keep the matching stock firmware ready (`samloader-rs` can also download
+it). Flashing stock firmware restores the device, apart from the Knox fuse.

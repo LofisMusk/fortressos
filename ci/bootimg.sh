@@ -127,11 +127,23 @@ official signed build, so install that ROM first and check it boots.
 In $variant builds the guard starts permissive: it only logs what it would
 deny, so the phone keeps working while we collect evidence.
 
-## Flash (from LineageOS Recovery, no Odin needed)
+## Flash A: from LineageOS Recovery (needs only adb)
 
     adb push boot-fortress.img /tmp/
     adb shell 'dd if=/tmp/boot-fortress.img of=/dev/block/by-name/boot bs=4M'
     adb shell sync
+
+## Flash B: from Download mode with samloader-rs
+
+Samsung has no fastboot. samloader-rs is what the LineageOS wiki uses for
+these devices, and it runs on macOS, Linux and Windows:
+https://github.com/topjohnwu/samloader-rs/releases/latest
+
+Power the phone off, hold Volume Up + Volume Down, plug in USB, confirm
+"Continue", then:
+
+    samloader print-pit                                  # connection test
+    samloader flash --partition BOOT boot-fortress.img
 
 Reboot. If anything misbehaves, flash the stock kernel back the same way;
 download it from LineageOS if you no longer have boot-stock.img:
