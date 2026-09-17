@@ -77,7 +77,7 @@ if [ "${SKIP_BUILD:-0}" = 1 ]; then
 	cp stock/kernel fortress-kernel
 else
 	localversion=$(curl -fsSL --max-time 60 \
-		"https://raw.githubusercontent.com/LineageOS/android_kernel_samsung_sm7325/$kernel_ref/arch/arm64/configs/vendor/lineage-$device\_defconfig" |
+		"https://raw.githubusercontent.com/LineageOS/android_kernel_samsung_sm7325/$kernel_ref/arch/arm64/configs/vendor/lineage-${device}_defconfig" |
 		sed -n 's/^CONFIG_LOCALVERSION="\(.*\)"$/\1/p')
 	base=${release%%-*}
 	scmversion=${release#"$base$localversion"}
