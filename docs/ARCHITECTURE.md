@@ -88,12 +88,19 @@ still have to leave as the VPN app's uid, which rule 5 drops. Forwarded
 traffic may only leave through a tunnel, unless the policy sets
 `allow_forward`.
 
-Exemptions only accept system uids; the parser rejects anything else. The
-candidates, to be tuned on the device in Phase 4, are:
+Exemptions only accept system uids; the parser rejects anything else. A
+permissive boot on the device (2026-09-18, Wi-Fi only, no SIM) showed
+exactly which ones matter:
 
-- `network_stack` (1073) on `wlan`/`rmnet`, for DHCP renewals.
-- `clat` (1029) on `rmnet`, for 464xlat on IPv6-only mobile networks.
-- The IMS/radio uid on the IMS APN interface, for VoLTE.
+| uid | seen doing | decision |
+|---|---|---|
+| 1000 `system` | NTP (`NetworkTimeUpdate`) | route through the tunnel (Phase 4) |
+| 1051 `dns` | netd's DnsResolver queries | tunnel |
+| 1073 `network_stack` | connectivity checks, DHCP | exempt on `wlan`/`rmnet` |
+| 10062 media/downloads provider | app-range uid, 10 attempts | no exemption: apps go through the tunnel |
+
+Still to be observed with a SIM present: `clat` (1029) on `rmnet` for
+464xlat, and the IMS/radio uid on the IMS APN interface for VoLTE.
 
 Captive-portal probes and NTP from system_server have to be routed into the
 tunnel (Phase 4) or they are dropped.

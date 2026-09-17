@@ -31,17 +31,31 @@ Pins used by CI (`ci/kernel-build.sh`): kernel commit
 - **Kernel config gaps found:** no BPF-LSM (5.4), `SELINUX_DEVELOP=y`, no
   Yama, no module signing, no WireGuard. See [ROADMAP.md](ROADMAP.md).
 
-## Bring-up checklist (Phase 1)
+## Bring-up results (2026-09-18)
 
-With a clean LineageOS 23.2 build signed with our keys, then with the
-Fortress kernel in develop (permissive) mode:
+Official LineageOS 23.2-20260916 with our kernel swapped into its boot.img
+(`ci/bootimg.sh`), develop/permissive:
 
-- [ ] Boots. `cat /sys/kernel/security/lsm` contains `fortress`
-- [ ] `dmesg | grep -i "started at EL"` shows EL1 (AVF research)
-- [ ] Wi-Fi, LTE, 5G NR, VoLTE (IMS), SMS
-- [ ] Fingerprint, all cameras, GPS fix, Bluetooth audio, NFC
-- [ ] OTA from recovery with our release key
-- [ ] Fortress "would deny" log lines reviewed (`dmesg | grep fortress`)
+- [x] Boots, stays up, 37 app processes, Wi-Fi associated and validated
+- [x] **All 87 vendor modules load**, `wlan` included: the pinned version
+      string really does keep Samsung's driver ABI happy
+- [x] Kernel reports `5.4.254-qgki-g12334aaea981`, built by our CI runner
+- [x] Guard active: 22 launch-gate and 20 egress events logged during boot,
+      0 unix IPC events
+- [ ] LTE, 5G NR, VoLTE, SMS (no SIM in the device yet)
+- [ ] Fingerprint, cameras, GPS, Bluetooth, NFC
+- [ ] OTA from recovery with our release key (needs the full ROM)
+
+Reading the guard without root: securityfs is not mounted on Android, and
+`dmesg` needs `CAP_SYSLOG`, but logd exposes the kernel ring buffer:
+
+    adb logcat -b kernel -d | grep -i fortress
+
+Early boot lines are missing from that buffer because logd starts after the
+kernel; `adb root` (LineageOS "Rooted debugging") or the full ROM is needed
+to see them.
+
+## Bring-up checklist, still open
 
 ## Knox Guard delays the unlock by 7 days
 
