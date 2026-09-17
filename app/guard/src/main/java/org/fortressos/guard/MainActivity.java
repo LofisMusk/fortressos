@@ -153,6 +153,8 @@ public class MainActivity extends Activity {
         appendByUid(sb, "BLOCKED FROM THE NETWORK", r.events, GuardReport.Kind.EGRESS);
         appendByUid(sb, "BLOCKED FROM OTHER APPS", r.events, GuardReport.Kind.IPC);
 
+        appendLeaks(sb);
+
         sb.append("RECENT\n");
         List<GuardReport.Event> events = r.events;
         int from = Math.max(0, events.size() - RECENT);
@@ -165,6 +167,30 @@ public class MainActivity extends Activity {
             sb.append(e.detail).append('\n');
         }
         return sb.toString();
+    }
+
+    /** What this very app can still read about the hardware. */
+    private void appendLeaks(StringBuilder sb) {
+        List<LeakProbe.Probe> probes = LeakProbe.run(getContentResolver());
+        int visible = 0;
+        for (LeakProbe.Probe p : probes) {
+            if (p.visible) {
+                visible++;
+            }
+        }
+        sb.append("IDENTITY VISIBLE TO THIS APP  ")
+          .append(visible).append('/').append(probes.size()).append("\n");
+        for (LeakProbe.Probe p : probes) {
+            sb.append(p.visible ? "  LEAK    " : "  blocked ")
+              .append(String.format("%-24s", p.name));
+            if (p.visible) {
+                sb.append(LeakProbe.preview(p.value));
+            } else {
+                sb.append(p.source);
+            }
+            sb.append('\n');
+        }
+        sb.append('\n');
     }
 
     private void appendByUid(StringBuilder sb, String title,

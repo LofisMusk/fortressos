@@ -51,6 +51,14 @@ class CompileTest(unittest.TestCase):
         self.assertEqual(len(blob), 64)
         self.assertEqual(struct.unpack_from("<8I", blob, 20), (0,) * 8)
 
+    def test_block_getlink_flag(self):
+        src = copy.deepcopy(BASE)
+        src["block_getlink"] = True
+        blob = fpol.compile_policy(src)
+        self.assertEqual(struct.unpack_from("<I", blob, 12)[0], fpol.F_BLOCK_GETLINK)
+        self.assertTrue(fpol.decode_policy(blob)["block_getlink"])
+        self.assertFalse(fpol.decode_policy(fpol.compile_policy(BASE))["block_getlink"])
+
     def test_deterministic(self):
         self.assertEqual(fpol.compile_policy(BASE), fpol.compile_policy(BASE))
 

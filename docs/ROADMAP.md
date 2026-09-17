@@ -7,7 +7,7 @@ Status legend: **done**, **in progress**, planned.
 | 0 | Repo, docs, CI, Fortress LSM core | policy/securityfs, launch gate, Network Guard, unix IPC isolation, QEMU tests | – | **done**: CI green (QEMU 54/54, a52sxq kernel builds); not yet on device |
 | 1 | Device validation | develop-mode kernel on device | – | **kernel half done**: Fortress runs on the phone on top of official LineageOS 23.2, all 87 vendor modules load, guard logs in permissive mode. Remaining: SIM/camera/fingerprint checks and an own-key ROM |
 | 2 | Own keys, release pipeline | vbmeta `--flags 0` + own AVB key | `sign_release.sh`, OTA JSON on GitHub Releases | keys script **done** |
-| 3 | Identity Guard | `/proc` and `/sys` identity denials, `RTM_GETLINK` filter | FortressService policy loader, zygote `self/profile` + `Build.*` + property overlay, Android ID | planned |
+| 3 | Identity Guard | `/proc` and `/sys` identity denials, `RTM_GETLINK` filter | FortressService policy loader, zygote `self/profile` + `Build.*` + property overlay, Android ID | **kernel half done** (measured leaks closed, QEMU tests); framework half needs the ROM |
 | 4 | Network Guard | WireGuard backport to 5.4, exemption tuning (DHCP, clat, IMS) | platform WireGuard VPN, system-uid routing, captive portal/NTP via tunnel | kernel core written |
 | 5 | Location Guard | deny GNSS/QMI nodes | `LocationProviderManager`, scan filtering, SUPL off | planned |
 | 6 | Storage Broker | deny lower filesystem | permission lockdown, Photo Picker/SAF, audit log | planned |

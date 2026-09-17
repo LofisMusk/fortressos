@@ -22,6 +22,7 @@ HEADER_SIZE = 64
 NAME_LEN = 16
 
 F_ALLOW_FORWARD = 1 << 0
+F_BLOCK_GETLINK = 1 << 1
 APP_NET = 1 << 0
 APP_TRUSTED = 1 << 1
 PROFILE_NONE = 0xFFFFFFFF
@@ -90,7 +91,8 @@ def encode_profile(name, props):
 
 def compile_policy(src):
     """Build a blob from a policy dict (the parsed JSON source)."""
-    known = {"serial", "allow_forward", "tunnels", "exempt", "profiles", "apps"}
+    known = {"serial", "allow_forward", "block_getlink", "tunnels", "exempt",
+             "profiles", "apps"}
     unknown = set(src) - known
     if unknown:
         raise PolicyError(f"unknown top-level keys: {sorted(unknown)}")
@@ -98,7 +100,8 @@ def compile_policy(src):
     serial = int(src.get("serial", 0))
     if not 0 <= serial <= 0xFFFFFFFF:
         raise PolicyError("serial out of range")
-    flags = F_ALLOW_FORWARD if src.get("allow_forward", False) else 0
+    flags = (F_ALLOW_FORWARD if src.get("allow_forward", False) else 0) | \
+            (F_BLOCK_GETLINK if src.get("block_getlink", False) else 0)
 
     profile_names = sorted(src.get("profiles", {}))
     profile_index = {n: i for i, n in enumerate(profile_names)}
@@ -196,6 +199,7 @@ def decode_policy(blob):
         return raw.rstrip(b"\0").decode("ascii")
 
     out = {"serial": serial, "allow_forward": bool(flags & F_ALLOW_FORWARD),
+           "block_getlink": bool(flags & F_BLOCK_GETLINK),
            "apps": [], "tunnels": [], "exempt": [], "profiles": []}
     for i in range(n_prof):
         doff, dlen = struct.unpack_from("<II", blob, prof_off + i * 8)

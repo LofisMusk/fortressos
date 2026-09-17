@@ -306,6 +306,17 @@ static int fn_profile(void *p)
 	return strcmp(buf, want) ? 200 : 0;
 }
 
+/* Used by the identity tests: can this uid open that path at all? */
+static int fn_open(void *p)
+{
+	int fd = open((const char *)p, O_RDONLY);
+
+	if (fd < 0)
+		return errno;
+	close(fd);
+	return 0;
+}
+
 static int fn_open_policy(void *p)
 {
 	int fd = open(FORTRESS "/policy", O_WRONLY);
@@ -456,6 +467,29 @@ static void test_gate(void)
 	expect(run_as(20001, NULL, NULL) == 0, "sdk sandbox 20001 launches");
 }
 
+static void test_identity(void)
+{
+	printf("== identity leaks\n");
+	expect(run_as(10050, fn_open, "/proc/cpuinfo") == EACCES,
+	       "app cannot read /proc/cpuinfo");
+	expect(run_as(10050, fn_open, "/proc/sys/kernel/random/boot_id") == EACCES,
+	       "app cannot read the shared boot id");
+	expect(run_as(10050, fn_open, "/proc/cmdline") == EACCES,
+	       "app cannot read the boot cmdline");
+	expect(run_as(10050, fn_open, "/sys/devices/virtual/net/fwg0/address") == EACCES,
+	       "app cannot read an interface MAC through sysfs");
+	expect(run_as(90001, fn_open, "/proc/cpuinfo") == EACCES,
+	       "isolated process cannot read /proc/cpuinfo either");
+	expect(run_as(10050, fn_open, "/proc/self/stat") == 0,
+	       "unrelated proc files still open");
+	expect(run_as(10050, fn_open, "/proc/uptime") == 0,
+	       "harmless proc files still open");
+	expect(run_as(0, fn_open, "/proc/cpuinfo") == 0,
+	       "system uid reads /proc/cpuinfo normally");
+	expect(run_as(1000, fn_open, "/sys/devices/virtual/net/fwg0/address") == 0,
+	       "system uid reads the MAC normally");
+}
+
 static void test_net(void)
 {
 	printf("== network guard\n");
@@ -551,6 +585,7 @@ int main(void)
 	test_unloaded();
 	test_load();
 	test_gate();
+	test_identity();
 	test_net();
 	test_ipc();
 	test_profile_and_access();

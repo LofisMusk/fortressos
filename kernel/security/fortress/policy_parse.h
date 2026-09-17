@@ -50,7 +50,8 @@ typedef uint32_t u32;
 
 /* Global policy flags. */
 #define FPOL_F_ALLOW_FORWARD	(1u << 0)	/* permit forwarding out of non-tunnel ifaces */
-#define FPOL_F_ALL		(FPOL_F_ALLOW_FORWARD)
+#define FPOL_F_BLOCK_GETLINK	(1u << 1)	/* deny RTM_GETLINK to untrusted uids */
+#define FPOL_F_ALL		(FPOL_F_ALLOW_FORWARD | FPOL_F_BLOCK_GETLINK)
 
 /* Per-app flags. */
 #define FPOL_APP_NET		(1u << 0)	/* may use the network (tunnel only) */

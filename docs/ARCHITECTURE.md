@@ -32,7 +32,7 @@
 | Area | Kernel (this repo, `kernel/security/fortress`) | In-process shim (later phases) |
 |---|---|---|
 | Launch gate | `task_fix_setuid`: becoming an app uid without an active policy entry fails, and the would-be app process is killed | FortressService adds an entry when PackageManager assigns a uid |
-| Identity | `self/profile` hands each app its virtual identity. Planned: deny identity leaks under `/proc` and `/sys`, and `RTM_GETLINK` (MAC) for all apps, whatever their targetSdk | zygote rewrites `Build.*` and overlays the `build_prop` property area in the app's mount namespace. Per-app Android ID in SettingsProvider |
+| Identity | `self/profile` hands each app its virtual identity. `file_open` denies identity leaks under `/proc` and `/sys` (SoC id, boot id, cpuinfo, cmdline, MAC, UFS serial); `netlink_send` can deny `RTM_GETLINK` whatever the targetSdk | zygote rewrites `Build.*` and overlays the `build_prop` property area in the app's mount namespace. Per-app Android ID in SettingsProvider |
 | Network | netfilter LOCAL_OUT/POST_ROUTING/FORWARD, IPv4+IPv6 (below) | Platform WireGuard VPN in system_server. Routing for system uids through the tunnel |
 | Location | Planned: deny app access to GNSS/QMI/diag nodes | `LocationProviderManager` substitution, Wi-Fi/cell scan filtering, SUPL off |
 | Sensors | Planned: deny `iio` and sensor-hub nodes | Per-uid filtering in `SensorService` |
@@ -56,6 +56,7 @@ enforcement that does not depend on targetSdk.
 | `gate.c` | Launch gate |
 | `netguard.c` | Egress policy |
 | `ipc.c` | AF_UNIX isolation |
+| `identity.c` | `/proc` and `/sys` identity denials, `RTM_GETLINK` filter |
 
 ### uid classes
 
@@ -104,6 +105,31 @@ Still to be observed with a SIM present: `clat` (1029) on `rmnet` for
 
 Captive-portal probes and NTP from system_server have to be routed into the
 tunnel (Phase 4) or they are dropped.
+
+### Identity denials (kernel half of Phase 3)
+
+Measured on the device with the probe built into the Fortress Guard app: a
+plain app could read 7 of 18 identity sources. Three of them are the
+kernel's to close, and now are:
+
+| Source | Why it matters |
+|---|---|
+| `/sys/devices/soc0/*` | SoC id, machine name, serial |
+| `/proc/cpuinfo` | SoC revision and part numbers |
+| `/proc/sys/kernel/random/boot_id` | **the same value for every app**, a ready-made cross-app correlation key |
+
+Denied as well, before anything opens them up: `/proc/cmdline` (carries
+`androidboot.serialno`), `/proc/version`, `/proc/net/{arp,route,if_inet6}`,
+and sysfs attributes ending in `address`, `serial`, `serial_number`,
+`unique_id` or `cid`. sysfs is matched on the device path behind the
+`/sys/class` symlinks, so the MAC is caught wherever it is reached from.
+
+`RTM_GETLINK` carries the MAC in `IFLA_ADDRESS`, but denying it also breaks
+interface enumeration (bionic's `getifaddrs` uses the same message), so it
+sits behind the `block_getlink` policy flag instead of being always on.
+
+The remaining four leaks (`Build.MODEL`, `Build.DEVICE`,
+`Build.FINGERPRINT`, Android ID) live in the framework and need the ROM.
 
 ### Policy blob (v1)
 
