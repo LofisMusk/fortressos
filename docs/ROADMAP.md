@@ -5,7 +5,7 @@ Status legend: **done**, **in progress**, planned.
 | Phase | Scope | Kernel part | Framework part | Status |
 |---|---|---|---|---|
 | 0 | Repo, docs, CI, Fortress LSM core | policy/securityfs, launch gate, Network Guard, unix IPC isolation, QEMU tests | – | **done**: CI green (QEMU 54/54, a52sxq kernel builds); not yet on device |
-| 1 | Clean LineageOS 23.2 build, device validation | develop-mode kernel on device | – | planned (needs crave.io access) |
+| 1 | Clean LineageOS 23.2 build, device validation | develop-mode kernel on device | – | planned: build on a Google Cloud VM from the free credits (`ci/rom/gcp-build.sh`) |
 | 2 | Own keys, release pipeline | vbmeta `--flags 0` + own AVB key | `sign_release.sh`, OTA JSON on GitHub Releases | keys script **done** |
 | 3 | Identity Guard | `/proc` and `/sys` identity denials, `RTM_GETLINK` filter | FortressService policy loader, zygote `self/profile` + `Build.*` + property overlay, Android ID | planned |
 | 4 | Network Guard | WireGuard backport to 5.4, exemption tuning (DHCP, clat, IMS) | platform WireGuard VPN, system-uid routing, captive portal/NTP via tunnel | kernel core written |

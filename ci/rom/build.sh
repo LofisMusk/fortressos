@@ -4,8 +4,10 @@
 # UNTESTED SO FAR - first real run is Phase 1 (see docs/BUILD.md).
 #
 # Full Fortress OS build: produces UNSIGNED target-files and otatools that
-# are then signed offline (signing/). Needs Linux x86_64, ~300 GB disk and
-# 32-64 GB RAM: a crave.io workspace or an own machine, not a free runner.
+# are then signed offline (signing/). Needs Linux x86_64 with 64 GB RAM and
+# 400+ GB of disk, prepared by ci/rom/setup-host.sh. ci/rom/gcp-build.sh
+# drives a Google Cloud VM that meets that; a rented or own machine works
+# the same way. A free CI runner does not.
 #
 #   SRC=~/lineage VARIANT=develop ci/rom/build.sh
 set -euo pipefail
@@ -16,7 +18,12 @@ variant="${VARIANT:-develop}"
 device=a52sxq
 kdefconfig=kernel/samsung/sm7325/arch/arm64/configs/vendor/lineage-a52sxq_defconfig
 
-mkdir -p "$src"
+# ccache lives next to the source tree, so it survives between builds.
+export USE_CCACHE=1
+export CCACHE_EXEC="${CCACHE_EXEC:-/usr/bin/ccache}"
+export CCACHE_DIR="${CCACHE_DIR:-$(dirname "$src")/ccache}"
+
+mkdir -p "$src" "$CCACHE_DIR"
 cd "$src"
 
 if [ ! -d .repo ]; then
@@ -43,3 +50,4 @@ m target-files-package otatools-package
 set -u
 
 echo "rom-build: unsigned target-files and otatools are in $OUT and out/host"
+ccache --show-stats | head -5 || true

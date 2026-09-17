@@ -37,14 +37,36 @@ normally aren't, which is why these steps run in Linux.
 
 ## 3. Full ROM (Phase 1)
 
-`ci/rom/build.sh` has **not been run yet**. It needs Linux x86_64 with about
-300 GB of disk and 32–64 GB of RAM. AOSP does not build on macOS, and a free
-runner has about 14 GB of disk and a 6-hour limit, so the options are:
+`ci/rom/build.sh` has **not been run yet**. LineageOS documents 64 GB of RAM
+and 400 GB of storage for branch 21 and newer, on Linux x86_64. AOSP does
+not build on macOS, and a free runner (about 14 GB of disk, 6 hours) or the
+Claude Code cloud VM (4 vCPU, 16 GB RAM, 30 GB disk) are both far too small.
 
-- **crave.io**: free build servers for FOSS ROM projects. Self-signup is
-  closed; ask for access through the crave community. The workflow gets
-  added once there is access.
-- Any rented or owned Linux machine.
+### Google Cloud, on the free trial credits (current path)
+
+`ci/rom/gcp-build.sh` drives a VM sized for the job (16 vCPU, 64 GB RAM,
+500 GB data disk) and keeps the source tree and ccache on a disk that
+outlives the VM:
+
+```
+gcloud auth login && gcloud config set project <project-id>
+ci/rom/gcp-build.sh all        # create VM, install toolchain, start build
+ci/rom/gcp-build.sh status     # tail the build log
+ci/rom/gcp-build.sh fetch      # copy target-files + otatools here
+ci/rom/gcp-build.sh down       # delete the VM, keep sources and ccache
+```
+
+Rough costs: a few dollars of VM time per build, and about $2 a day for the
+500 GB disk while it exists. `down` stops the VM charge; `destroy` removes
+the disk too. A fresh trial's CPU quota may be below 16 vCPU: either raise
+the quota or run `MACHINE=n2d-highmem-8 ci/rom/gcp-build.sh up` (8 vCPU,
+64 GB RAM).
+
+### Any other machine
+
+`ci/rom/setup-host.sh` prepares any Ubuntu 22.04/24.04 host the same way
+(packages, `repo`, swap, ccache), so a rented dedicated server, your own
+x86 box, or a crave.io workspace all run the same `ci/rom/build.sh`.
 
 The output is **unsigned** `target-files` + `otatools`. Signing happens
 offline, see [SIGNING.md](SIGNING.md).
