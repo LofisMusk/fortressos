@@ -85,3 +85,36 @@ jobs:
             out/device-kernel/out/arch/arm64/boot/Image
             out/device-kernel/out/.config
             out/device-kernel/build.log
+
+  bootimg:
+    name: flashable boot.img (stock LineageOS + Fortress kernel)
+    runs-on: ubuntu-22.04
+    timeout-minutes: 300
+    if: github.event_name == 'workflow_dispatch'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
+          df -h /
+      - name: Install packages
+        run: |
+          sudo apt-get update
+          xargs -a ci/packages.txt sudo apt-get install -y --no-install-recommends
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: out/bootimg/device-kernel/clang
+          key: aosp-clang-r563880c-android-16.0.0_r4
+      - name: Repack the official boot.img with the Fortress kernel
+        run: ci/bootimg.sh
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: always()
+        with:
+          name: boot-fortress
+          if-no-files-found: ignore
+          retention-days: 14
+          path: |
+            out/bootimg/boot-fortress.img
+            out/bootimg/FLASH.md
+            out/bootimg/SHA256SUMS
+            out/bootimg/kernel.config

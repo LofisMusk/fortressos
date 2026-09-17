@@ -35,7 +35,32 @@ docker run --rm -v "$PWD":/src -w /src fortress-ci ci/qemu-test.sh
 The kernel source has to sit on a case-sensitive filesystem. macOS volumes
 normally aren't, which is why these steps run in Linux.
 
-## 3. Full ROM (Phase 1)
+## 3. Flashable boot.img, no ROM build (free)
+
+The guard's kernel half can be tested on the phone without building a ROM.
+`ci/bootimg.sh` takes the newest official LineageOS boot.img for a52sxq,
+reads that build's manifest to learn which kernel revision it used, builds
+our kernel from exactly that revision with a pinned version string, and
+swaps it into the image. Everything else stays LineageOS's signed build.
+
+Run it from the `kernel` workflow (**Run workflow** > job `bootimg`), or
+locally on Linux:
+
+```
+ci/bootimg.sh                 # output in out/bootimg/
+SKIP_BUILD=1 ci/bootimg.sh    # self-test of the unpack/repack path only
+```
+
+The script refuses to produce an image whose `Linux version` differs from
+the stock one, because Samsung's vendor modules (Wi-Fi and friends) only
+load when the kernel release string matches. Flashing instructions and the
+rollback link land in `out/bootimg/FLASH.md`.
+
+This covers the launch gate, Network Guard and IPC isolation on real
+hardware. Virtual identities, Location, Sensors and Storage all live in the
+framework, so they still need the full ROM below.
+
+## 4. Full ROM (Phase 1)
 
 `ci/rom/build.sh` has **not been run yet**. LineageOS documents 64 GB of RAM
 and 400 GB of storage for branch 21 and newer, on Linux x86_64. AOSP does

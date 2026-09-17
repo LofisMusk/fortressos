@@ -38,6 +38,12 @@ git -C kernel fetch -q --depth 1 origin "$kernel_ref"
 git -C kernel checkout -q --force FETCH_HEAD
 git -C kernel clean -qfdx
 
+# Pin the version suffix when we must match an existing build's modules
+# (scripts/setlocalversion prefers .scmversion and skips the git/dirty check).
+if [ -n "${SCMVERSION:-}" ]; then
+	printf '%s' "$SCMVERSION" > kernel/.scmversion
+fi
+
 # 2. Only the one clang directory from AOSP prebuilts (partial clone).
 if [ ! -x "clang/$clang_version/bin/clang" ]; then
 	rm -rf clang
