@@ -37,7 +37,8 @@ curl -fsSL --max-time 120 "$api" -o builds.json
 eval "$(python3 - "$device" <<'PY'
 import json, sys
 builds = json.load(open('builds.json'))
-build = builds[-1]
+# The order of the API list is not guaranteed: pick by date, not position.
+build = max(builds, key=lambda b: b['datetime'])
 files = {f['filename']: f for f in build['files'] if 'filename' in f}
 boot = files['boot.img']
 manifest = files['build-manifest.xml']
@@ -73,7 +74,12 @@ release=$(strings -a stock/kernel | sed -n 's/^Linux version \([^ ]*\) .*/\1/p' 
 echo "bootimg: stock kernel $release"
 
 # 3. Our kernel, same revision, same version string (module ABI).
-if [ "${SKIP_BUILD:-0}" = 1 ]; then
+if [ -n "${KERNEL_IMAGE:-}" ]; then
+	# Reuse a kernel built earlier (CI artifact), e.g. to rebase the same
+	# kernel onto a newer nightly without a rebuild. The version check
+	# below still decides whether that is safe.
+	cp "$KERNEL_IMAGE" fortress-kernel
+elif [ "${SKIP_BUILD:-0}" = 1 ]; then
 	cp stock/kernel fortress-kernel
 else
 	localversion=$(curl -fsSL --max-time 60 \
