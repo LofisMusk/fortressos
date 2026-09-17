@@ -43,6 +43,25 @@ Fortress kernel in develop (permissive) mode:
 - [ ] OTA from recovery with our release key
 - [ ] Fortress "would deny" log lines reviewed (`dmesg | grep fortress`)
 
+## Knox Guard delays the unlock by 7 days
+
+The bootloader itself is offline: at boot it only reads a locally stored
+flag plus the `KG STATE` shown on the download-mode screen. What needs the
+network is *permission to change that flag*. After the setup wizard the
+state sits at `Prenormal` for 168 hours, and only once Samsung's servers
+confirm the device is not reported stolen or carrier-locked does it become
+`Normal` and the "OEM unlocking" toggle appear.
+
+So a freshly reset device cannot be unlocked for a week, however offline
+the bootloader is. Keep the phone powered on and online, and do not factory
+reset it: that restarts the counter. The widely shared trick of moving the
+system date forward manipulates the local counter only, which is why it
+works for some people and not others.
+
+This is the same vendor control that makes re-locking with our own AVB key
+impossible: on this hardware the owner never gets the final say over what
+the device will boot.
+
 ## Flashing tools (macOS)
 
 Samsung devices have no fastboot, and on macOS the usual alternatives are
