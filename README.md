@@ -28,6 +28,7 @@ yet. The full ROM build (Phase 1) is next. See
 |---|---|
 | `kernel/security/fortress/` | the LSM (goes into the kernel tree as `security/fortress/`) |
 | `kernel/integrate.sh`, `kernel/configs/` | wiring into any 5.4 tree, config fragments |
+| `app/` | **Fortress Guard**, the on-device view: which apps the guard blocked from launching, from the network and from each other |
 | `tools/fortress-policy/` | policy compiler (JSON → blob), parser tests, fuzzer |
 | `tests/kernel/` | QEMU runtime test (`/init`) and test policies |
 | `ci/` | kernel build, QEMU test, ROM build script, Docker env |

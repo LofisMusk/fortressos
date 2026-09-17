@@ -1,0 +1,8 @@
+org.fortressos.guard-pngs-0 /Users/mekamb/Repos/fortressos/app/guard/build/generated/res/pngs/debug
+org.fortressos.guard-updated_navigation_xml-1 /Users/mekamb/Repos/fortressos/app/guard/build/generated/updated_navigation_xml/debug
+org.fortressos.guard-packageDebugResources-2 /Users/mekamb/Repos/fortressos/app/guard/build/intermediates/incremental/debug/packageDebugResources/merged.dir
+org.fortressos.guard-packageDebugResources-3 /Users/mekamb/Repos/fortressos/app/guard/build/intermediates/incremental/debug/packageDebugResources/stripped.dir
+org.fortressos.guard-debug-4 /Users/mekamb/Repos/fortressos/app/guard/build/intermediates/merged_res/debug/mergeDebugResources
+org.fortressos.guard-debug-5 /Users/mekamb/Repos/fortressos/app/guard/src/debug/res
+org.fortressos.guard-main-6 /Users/mekamb/Repos/fortressos/app/guard/src/main/res
+gradleHome-0 /Users/mekamb/.gradle

@@ -1,0 +1,29 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'org.fortressos.guard'
+    compileSdk 36
+
+    defaultConfig {
+        applicationId 'org.fortressos.guard'
+        minSdk 30
+        targetSdk 36
+        versionCode 1
+        versionName '0.1'
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    buildTypes {
+        debug {
+            // Debug-signed on purpose: the app is a diagnostic tool until the
+            // Fortress ROM ships it as a platform app (Phase 3).
+            minifyEnabled false
+        }
+    }
+}

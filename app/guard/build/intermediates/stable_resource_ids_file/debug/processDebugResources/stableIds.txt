@@ -1,0 +1,1 @@
+org.fortressos.guard:string/app_name = 0x7f010000
