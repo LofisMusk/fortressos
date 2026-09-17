@@ -472,8 +472,15 @@ static void test_identity(void)
 	printf("== identity leaks\n");
 	expect(run_as(10050, fn_open, "/proc/cpuinfo") == EACCES,
 	       "app cannot read /proc/cpuinfo");
-	expect(run_as(10050, fn_open, "/proc/sys/kernel/random/boot_id") == EACCES,
-	       "app cannot read the shared boot id");
+	{
+		const char *boot_id = "/proc/sys/kernel/random/boot_id";
+		int as_root = run_as(0, fn_open, (void *)boot_id);
+		int as_app = run_as(10050, fn_open, (void *)boot_id);
+
+		expect(as_root == 0, "boot id exists (root rc=%d)", as_root);
+		expect(as_app == EACCES,
+		       "app cannot read the shared boot id (rc=%d)", as_app);
+	}
 	expect(run_as(10050, fn_open, "/proc/cmdline") == EACCES,
 	       "app cannot read the boot cmdline");
 	expect(run_as(10050, fn_open, "/sys/devices/virtual/net/fwg0/address") == EACCES,
