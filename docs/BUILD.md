@@ -49,6 +49,7 @@ Claude Code cloud VM (4 vCPU, 16 GB RAM, 30 GB disk) are both far too small.
 outlives the VM:
 
 ```
+brew install --cask gcloud-cli          # macOS; the old name google-cloud-sdk still resolves
 gcloud auth login && gcloud config set project <project-id>
 ci/rom/gcp-build.sh all        # create VM, install toolchain, start build
 ci/rom/gcp-build.sh status     # tail the build log
