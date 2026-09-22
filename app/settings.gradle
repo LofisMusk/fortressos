@@ -13,3 +13,4 @@ dependencyResolutionManagement {
 }
 rootProject.name = 'FortressGuard'
 include ':guard'
+include ':telemetry'
